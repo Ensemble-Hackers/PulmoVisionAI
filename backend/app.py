@@ -118,10 +118,10 @@ app, _, _ = demo.launch(
     prevent_thread_lock=True,
 )
 
-# Add Health Check endpoints for UptimeRobot, cron jobs, and Vercel
-@app.get("/api/health")
-@app.get("/health")
-@app.get("/ping")
+# Add Health Check endpoints for UptimeRobot (supports GET and HEAD), cron jobs, and Vercel
+@app.api_route("/api/health", methods=["GET", "HEAD"])
+@app.api_route("/health", methods=["GET", "HEAD"])
+@app.api_route("/ping", methods=["GET", "HEAD"])
 def health():
     return {
         "status": "online",
