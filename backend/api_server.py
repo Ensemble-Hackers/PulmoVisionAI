@@ -23,7 +23,18 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 REPO_ROOT = Path(__file__).resolve().parent
-MODELS_DIR = REPO_ROOT / "Lung-cancer-model-train" / "models"
+if REPO_ROOT.name == "backend":
+    REPO_ROOT = REPO_ROOT.parent
+
+# Check env var MODELS_DIR, or local backend/models, or root Lung-cancer-model-train/models
+MODELS_DIR = Path(
+    os.environ.get(
+        "MODELS_DIR",
+        (Path(__file__).resolve().parent / "models")
+        if (Path(__file__).resolve().parent / "models").exists()
+        else (REPO_ROOT / "Lung-cancer-model-train" / "models")
+    )
+)
 
 XCEPTION_PATH = MODELS_DIR / "trained_lung_cancer_model.h5"
 EFFICIENTNET_PATH = MODELS_DIR / "efficientnetv2s_model.h5"
@@ -86,10 +97,16 @@ except ImportError:
 
 try:
     import tensorflow as tf
-    from tensorflow.keras.layers import BatchNormalization, Dense, Dropout, GlobalAveragePooling2D, Input
-    from tensorflow.keras import Model
-    from tensorflow.keras.applications import Xception, EfficientNetV2S, DenseNet121
-    from tensorflow.keras.applications.densenet import preprocess_input as densenet_preprocess_input
+    Model = tf.keras.Model
+    BatchNormalization = tf.keras.layers.BatchNormalization
+    Dense = tf.keras.layers.Dense
+    Dropout = tf.keras.layers.Dropout
+    GlobalAveragePooling2D = tf.keras.layers.GlobalAveragePooling2D
+    Input = tf.keras.layers.Input
+    Xception = tf.keras.applications.Xception
+    EfficientNetV2S = tf.keras.applications.EfficientNetV2S
+    DenseNet121 = tf.keras.applications.DenseNet121
+    densenet_preprocess_input = tf.keras.applications.densenet.preprocess_input
     TF_AVAILABLE = True
 except Exception as ex:
     print(f"[API] TensorFlow import error: {ex}")
@@ -501,12 +518,13 @@ class MedicalApiHandler(BaseHTTPRequestHandler):
 
 def run_server(port=8001):
     init_models()
-    server_address = ("127.0.0.1", port)
+    host = os.environ.get("HOST", "0.0.0.0")
+    server_address = (host, port)
     httpd = HTTPServer(server_address, MedicalApiHandler)
     print("\n=======================================================")
     print(" PulmoVision AI Clinical Inference Server Started")
-    print(f" URL: http://127.0.0.1:{port}")
-    print(f" Health check: http://127.0.0.1:{port}/api/health")
+    print(f" URL: http://{host}:{port}")
+    print(f" Health check: http://{host}:{port}/api/health")
     print(f" Active Backbones: {len(LOADED_MODELS)} / 3 loaded")
     print("=======================================================\n")
     try:

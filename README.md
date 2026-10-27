@@ -174,29 +174,31 @@ The predictions across all 5 views and all 3 models are averaged, virtually elim
 
 ```text
 Lung-cancer-detection-CNN/
-├── inference.py                           # Standalone CLI / visual inference using the 90.16% Tri-Ensemble
+├── frontend/                              # Clinical Web Application (Next.js 16, React 19, TypeScript)
+│   ├── src/app/                           # Multi-view clinical routing (studio, pathology, benchmarks, architecture)
+│   ├── src/components/                    # Clinical UI components (DiagnosticStudio, Radar, Consensus)
+│   ├── src/lib/                           # Client utilities & clinical knowledge base
+│   └── public/                            # Static DICOM/PNG patient sample scans and assets
+├── docs/                                  # Presentation decks, clinical reports, and architecture guides
+│   ├── Pulmo AI — Precision Clinical Thoracic Oncology.pdf
+│   ├── CRSP_Limitations_and_Solutions.pptx
+│   └── report.md                          # Clinical and safety evaluation report
+├── Lung-cancer-model-train/               # Deep learning model architectures and training
+│   ├── train.py                           # Xception training pipeline (Stage 1 + Stage 2 fine-tuning)
+│   ├── train_efficientnet.py              # EfficientNetV2-S training pipeline
+│   ├── train_densenet.py                  # DenseNet121 + CLAHE contrast optimization pipeline
+│   ├── train.ipynb                        # Interactive Jupyter Notebook for experiments & EDA
+│   ├── dataset/                           # Training, validation, and test datasets
+│   └── models/                            # Trained .h5 model weights (Xception, EffNet, DenseNet)
+├── api_server.py                          # High-performance clinical REST inference server (Port 8001)
+├── app.py                                 # Hugging Face Spaces free Gradio + FastAPI deployment entry
 ├── ensemble_pipeline.py                   # 3-Backbone Tri-Ensemble evaluation benchmark (315 test scans)
+├── inference.py                           # Standalone CLI / visual inference script
+├── requirements.txt                       # Backend Python dependencies for cloud deployment
+├── Dockerfile                             # Container build definition for backend inference
 ├── pyproject.toml                         # Project configuration and dependency specifications
 ├── uv.lock                                # Locked dependency versions for reproducible installs
-├── README.md                              # Main project documentation and guides
-├── CRSP_Limitations_and_Solutions.pptx    # Project presentation slide deck
-├── generate_pptx.py                       # Presentation deck generator
-├── ppt.md                                 # Presentation narrative & slide content
-├── report.md                              # Technical clinical documentation
-└── Lung-cancer-model-train/
-    ├── train.py                           # Xception training pipeline (Stage 1 + Stage 2 fine-tuning)
-    ├── train_efficientnet.py              # EfficientNetV2-S training pipeline
-    ├── train_densenet.py                  # DenseNet121 + CLAHE contrast optimization pipeline
-    ├── train.ipynb                        # Interactive Jupyter Notebook for experiments & EDA
-    ├── dataset/
-    │   ├── train/                         # Training images (613 scans across 4 classes)
-    │   ├── valid/                         # Validation images (72 scans across 4 classes)
-    │   └── test/                          # Holdout testing images (315 unseen patient scans)
-    └── models/
-        ├── trained_lung_cancer_model.h5       # Xception trained complete model (161.8 MB)
-        ├── efficientnetv2s_model.h5           # EfficientNetV2-S trained complete model (105.5 MB)
-        ├── densenet121_clahe_model.h5         # DenseNet121 + CLAHE trained complete model (38.0 MB)
-        └── model_tracker.md                   # Complete experiment log and performance benchmarks
+└── README.md                              # Main project documentation and guides
 ```
 
 ---

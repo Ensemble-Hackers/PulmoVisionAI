@@ -9,14 +9,14 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+/build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -34,6 +34,18 @@ env/
 ENV/
 env.bak/
 venv.bak/
+
+# Frontend (Next.js & Node)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/next-env.d.ts
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env*.local
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -57,12 +69,15 @@ test-models/
 checkpoints/
 weights/
 
-# Dataset / Raw images (large data folder)
-# Comment out if you intentionally want to commit dataset images to Git
+# Dataset & Inference Output Artifacts
 **/dataset/
-*.png
-*.jpg
-*.jpeg
+prediction_result.png
+/outputs/
+/output/
+
+# Explicitly ensure frontend public assets & source files are tracked
+!frontend/public/**
+!frontend/src/**
 
 # Operating System Files
 .DS_Store
