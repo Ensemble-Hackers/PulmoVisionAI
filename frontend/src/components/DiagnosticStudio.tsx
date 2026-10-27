@@ -284,7 +284,7 @@ export const DiagnosticStudio: React.FC<DiagnosticStudioProps> = ({
             patientId: `CASE-${Math.floor(1000 + Math.random() * 9000)}`,
             path: dataUrl,
             histology: "Custom Ingested CT Slice - Tri-Ensemble Evaluation",
-            verifiedGroundTruth: "Adenocarcinoma"
+            verifiedGroundTruth: "Normal (Healthy Lung)" as any
           }
         };
         setActiveScan(newScan);
@@ -309,7 +309,7 @@ export const DiagnosticStudio: React.FC<DiagnosticStudioProps> = ({
     if (!activeScan || isAnalyzing) return;
     setIsAnalyzing(true);
     try {
-      const res = await requestPrediction(activeScan.dataUrl, activeScan.meta);
+      const res = await requestPrediction(activeScan.dataUrl, activeScan.isSample ? activeScan.meta : null);
       setResult(res);
     } catch (err) {
       console.error("Analysis execution error:", err);
@@ -638,7 +638,7 @@ export const DiagnosticStudio: React.FC<DiagnosticStudioProps> = ({
                   />
                   <span>
                     {result.source === "python_backend" 
-                      ? "Tri-Ensemble Python DL Engine (Port 8001 • Live Active)" 
+                      ? "Tri-Ensemble Python CNN Engine (ZeroGPU • Live Active)" 
                       : "Calibrated Analytical Engine"}
                   </span>
                 </div>
