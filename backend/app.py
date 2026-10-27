@@ -59,7 +59,7 @@ import gradio as gr
 
 # Hugging Face ZeroGPU compatibility hook
 try:
-    import spaces
+    import spaces  # type: ignore[import-not-found]
 except ImportError:
     class _SpacesMock:
         @staticmethod
