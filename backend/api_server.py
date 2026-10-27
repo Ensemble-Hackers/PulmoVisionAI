@@ -22,19 +22,16 @@ from PIL import Image
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
-REPO_ROOT = Path(__file__).resolve().parent
-if REPO_ROOT.name == "backend":
-    REPO_ROOT = REPO_ROOT.parent
+BACKEND_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BACKEND_DIR.parent if BACKEND_DIR.name == "backend" else BACKEND_DIR
 
-# Check env var MODELS_DIR, or local backend/models, or root Lung-cancer-model-train/models
-MODELS_DIR = Path(
-    os.environ.get(
-        "MODELS_DIR",
-        (Path(__file__).resolve().parent / "models")
-        if (Path(__file__).resolve().parent / "models").exists()
-        else (REPO_ROOT / "Lung-cancer-model-train" / "models")
-    )
+# Prioritize local training folder if present; otherwise default to backend/models
+default_models_dir = (
+    (REPO_ROOT / "Lung-cancer-model-train" / "models")
+    if (REPO_ROOT / "Lung-cancer-model-train" / "models").exists()
+    else (BACKEND_DIR / "models")
 )
+MODELS_DIR = Path(os.environ.get("MODELS_DIR", default_models_dir))
 
 XCEPTION_PATH = MODELS_DIR / "trained_lung_cancer_model.h5"
 EFFICIENTNET_PATH = MODELS_DIR / "efficientnetv2s_model.h5"
@@ -135,9 +132,44 @@ def build_and_load_model(backbone_fn, h5_path, name):
         return None
 
 
+def download_models_from_hf_if_needed():
+    """Automatically downloads trained model weights from Hugging Face Hub if missing."""
+    hf_repo = os.environ.get("HF_MODEL_REPO", "").strip()
+    if not hf_repo:
+        return
+
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    import urllib.request
+
+    weights_to_check = [
+        ("trained_lung_cancer_model.h5", XCEPTION_PATH),
+        ("efficientnetv2s_model.h5", EFFICIENTNET_PATH),
+        ("densenet121_clahe_model.h5", DENSENET_PATH),
+    ]
+
+    for filename, target_path in weights_to_check:
+        if not target_path.exists() or target_path.stat().st_size == 0:
+            url = f"https://huggingface.co/{hf_repo}/resolve/main/{filename}"
+            print(f"[API] Downloading {filename} from Hugging Face ({url})...")
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+                with urllib.request.urlopen(req) as resp, open(target_path, "wb") as out_file:
+                    while True:
+                        chunk = resp.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        out_file.write(chunk)
+                size_mb = target_path.stat().st_size / (1024 * 1024)
+                print(f"[API] Successfully downloaded {filename} ({size_mb:.1f} MB)")
+            except Exception as e:
+                print(f"[API] Error downloading {filename} from {url}: {e}")
+
+
 def init_models():
     """Initializes and pre-warms all 3 deep learning models in memory."""
     global LOADED_MODELS
+    download_models_from_hf_if_needed()
+
     if not TF_AVAILABLE:
         print("[API] Running in analytical heuristic fallback mode (TF not available).")
         return

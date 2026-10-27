@@ -13,10 +13,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Attempt python inference backend first (Tri-Ensemble on port 8001)
-    const pythonBase = process.env.PYTHON_API_URL || "http://127.0.0.1:8001";
+    const pythonBase = (process.env.PYTHON_API_URL || "http://127.0.0.1:8001").replace(/\/+$/, "");
+    console.log(`[Predict Route] Connecting to Python backend: ${pythonBase}/api/predict`);
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
+      const timeout = setTimeout(() => controller.abort(), 45000); // 45s timeout for cold starts
       const res = await fetch(`${pythonBase}/api/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -27,12 +28,14 @@ export async function POST(req: NextRequest) {
 
       if (res.ok) {
         const data = await res.json();
+        console.log(`[Predict Route] Neural network inference succeeded: ${data.prediction} (${(data.confidence * 100).toFixed(1)}%)`);
         return NextResponse.json({ ...data, source: "python_backend" });
       } else {
-        console.warn(`[Predict Route] Python backend returned status ${res.status}`);
+        const errText = await res.text();
+        console.warn(`[Predict Route] Python backend returned HTTP ${res.status}: ${errText}`);
       }
     } catch (fetchErr) {
-      console.warn("[Predict Route] Python backend unreachable or timed out, falling back to analytical engine:", fetchErr);
+      console.warn(`[Predict Route] Failed to connect to ${pythonBase}/api/predict:`, fetchErr);
     }
 
     // Server-side analytical prediction engine
