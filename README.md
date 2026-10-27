@@ -214,8 +214,8 @@ Lung-cancer-detection-CNN/
 
 ```powershell
 # 1. Clone the repository
-git clone https://github.com/Ensemble-Hackers/Lung-cancer-detection-CNN.git
-cd Lung-cancer-detection-CNN
+git clone https://github.com/Ensemble-Hackers/PulmoVisionAI.git
+cd PulmoVisionAI
 
 # 2. Create and activate a Python 3.10 environment
 conda create -n lung_cancer python=3.10 -y
@@ -229,8 +229,8 @@ pip install tensorflow==2.10.0 opencv-python matplotlib scikit-learn
 
 ```bash
 # 1. Clone and enter directory
-git clone https://github.com/Ensemble-Hackers/Lung-cancer-detection-CNN.git
-cd Lung-cancer-detection-CNN
+git clone https://github.com/Ensemble-Hackers/PulmoVisionAI.git
+cd PulmoVisionAI
 
 # 2. Sync all locked dependencies into a virtual environment
 uv sync
