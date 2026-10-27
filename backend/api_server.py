@@ -433,15 +433,20 @@ class MedicalApiHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.end_headers()
 
     def do_OPTIONS(self):
         self._set_headers(200)
 
+    def do_HEAD(self):
+        """Allows lightweight HEAD requests from UptimeRobot and cron pings without downloading response bodies."""
+        self._set_headers(200)
+
     def do_GET(self):
-        if self.path == "/api/health" or self.path == "/":
+        clean_path = self.path.split("?")[0].rstrip("/")
+        if clean_path in ("/api/health", "/health", "/ping", "/ready", ""):
             payload = {
                 "status": "online",
                 "system": "PulmoVision AI Tri-Ensemble Clinical Inference Engine",
