@@ -14,16 +14,25 @@ export async function POST(req: NextRequest) {
 
     // Attempt python inference backend first (Hugging Face Space / local)
     const pythonBase = (process.env.PYTHON_API_URL || "https://stellar-merge-pulmovision-api.hf.space").replace(/\/+$/, "");
-    console.log(`[Predict Route] Connecting to Python backend: ${pythonBase}/api/predict`);
+    console.log(`[Predict Route] Connecting to Python backend: ${pythonBase}/predict`);
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 45000); // 45s timeout for cold starts
-      const res = await fetch(`${pythonBase}/api/predict`, {
+      let res = await fetch(`${pythonBase}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image_data: imageData, sample_id: sampleId }),
         signal: controller.signal
       });
+      if (!res.ok && res.status !== 500) {
+        // Fallback to /api/predict
+        res = await fetch(`${pythonBase}/api/predict`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_data: imageData, sample_id: sampleId }),
+          signal: controller.signal
+        });
+      }
       clearTimeout(timeout);
 
       if (res.ok) {
@@ -35,7 +44,7 @@ export async function POST(req: NextRequest) {
         console.warn(`[Predict Route] Python backend returned HTTP ${res.status}: ${errText}`);
       }
     } catch (fetchErr) {
-      console.warn(`[Predict Route] Failed to connect to ${pythonBase}/api/predict:`, fetchErr);
+      console.warn(`[Predict Route] Failed to connect to ${pythonBase}/predict:`, fetchErr);
     }
 
     // Server-side analytical prediction engine
