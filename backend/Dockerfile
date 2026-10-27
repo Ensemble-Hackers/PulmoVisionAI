@@ -16,11 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV HOST=0.0.0.0
-ENV PORT=8001
-ENV PULMO_API_PORT=8001
 ENV TF_CPP_MIN_LOG_LEVEL=2
 ENV TF_ENABLE_ONEDNN_OPTS=0
 
-EXPOSE 8001
+EXPOSE 8001 10000
 
 CMD ["python", "api_server.py"]

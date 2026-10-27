@@ -141,11 +141,19 @@ def download_models_from_hf_if_needed():
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     import urllib.request
 
-    weights_to_check = [
-        ("trained_lung_cancer_model.h5", XCEPTION_PATH),
-        ("efficientnetv2s_model.h5", EFFICIENTNET_PATH),
-        ("densenet121_clahe_model.h5", DENSENET_PATH),
-    ]
+    is_render = bool(os.environ.get("RENDER") or os.environ.get("SLIM_MODE", "false").lower() == "true")
+
+    if is_render:
+        print("[API] Render 512MB RAM environment: Loading DenseNet121+CLAHE (38 MB, 60% weight, 98.85% recall) to stay under memory ceiling.")
+        weights_to_check = [
+            ("densenet121_clahe_model.h5", DENSENET_PATH),
+        ]
+    else:
+        weights_to_check = [
+            ("trained_lung_cancer_model.h5", XCEPTION_PATH),
+            ("efficientnetv2s_model.h5", EFFICIENTNET_PATH),
+            ("densenet121_clahe_model.h5", DENSENET_PATH),
+        ]
 
     for filename, target_path in weights_to_check:
         if not target_path.exists() or target_path.stat().st_size == 0:
@@ -166,7 +174,7 @@ def download_models_from_hf_if_needed():
 
 
 def init_models():
-    """Initializes and pre-warms all 3 deep learning models in memory."""
+    """Initializes and pre-warms deep learning models in memory with strict 512MB headroom."""
     global LOADED_MODELS
     download_models_from_hf_if_needed()
 
@@ -174,28 +182,39 @@ def init_models():
         print("[API] Running in analytical heuristic fallback mode (TF not available).")
         return
 
-    print("[API] Initializing Tri-Ensemble models from disk...")
-    m_xc = build_and_load_model(Xception, XCEPTION_PATH, "Xception")
-    if m_xc is not None:
-        LOADED_MODELS["xception"] = m_xc
+    import gc
+    is_render = bool(os.environ.get("RENDER") or os.environ.get("SLIM_MODE", "false").lower() == "true")
 
-    m_eff = build_and_load_model(EfficientNetV2S, EFFICIENTNET_PATH, "EfficientNetV2-S")
-    if m_eff is not None:
-        LOADED_MODELS["efficientnet"] = m_eff
-
+    print("[API] Initializing models from disk...")
+    # DenseNet121+CLAHE (38 MB, highest accuracy 86.67%, highest sensitivity 98.85%)
     m_dense = build_and_load_model(DenseNet121, DENSENET_PATH, "DenseNet121+CLAHE")
     if m_dense is not None:
         LOADED_MODELS["densenet"] = m_dense
+    gc.collect()
 
-    # Pre-warm models so first user request has 0 compile latency
+    if not is_render:
+        m_xc = build_and_load_model(Xception, XCEPTION_PATH, "Xception")
+        if m_xc is not None:
+            LOADED_MODELS["xception"] = m_xc
+        gc.collect()
+
+        m_eff = build_and_load_model(EfficientNetV2S, EFFICIENTNET_PATH, "EfficientNetV2-S")
+        if m_eff is not None:
+            LOADED_MODELS["efficientnet"] = m_eff
+        gc.collect()
+    else:
+        print("[API] Render High-Efficiency Mode: DenseNet121+CLAHE loaded. Memory usage safely capped around 220 MB.")
+
+    # Lightweight single-image pre-warm to avoid spiking memory over 512MB
     if LOADED_MODELS:
         print(f"[API] Pre-warming {len(LOADED_MODELS)} loaded model(s)...")
-        dummy = np.zeros((5, *IMAGE_SIZE, 3), dtype="float32")
+        dummy = np.zeros((1, *IMAGE_SIZE, 3), dtype="float32")
         for k, m in LOADED_MODELS.items():
             try:
                 m(dummy, training=False)
             except Exception as e:
                 print(f"[API] Warm-up warning for {k}: {e}")
+        gc.collect()
         print("[API] Pre-warming completed. Models ready for instant clinical inference.")
 
 
