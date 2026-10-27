@@ -6,8 +6,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import gradio as gr
 import uvicorn
+import sys
+from pathlib import Path
 
-from api_server import init_models, run_inference, LOADED_MODELS, CLASSES
+# Add backend directory to sys.path so app.py works anywhere
+BACKEND_DIR = Path(__file__).resolve().parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+try:
+    from backend.api_server import init_models, run_inference, LOADED_MODELS, CLASSES
+except ImportError:
+    from api_server import init_models, run_inference, LOADED_MODELS, CLASSES  # type: ignore[import-not-found]
 
 # Initialize Tri-Ensemble CNN models
 init_models()
@@ -24,6 +34,8 @@ app.add_middleware(
 )
 
 @app.get("/api/health")
+@app.get("/health")
+@app.get("/ping")
 def health():
     return {
         "status": "online",

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const pythonBase = process.env.PYTHON_API_URL || "http://127.0.0.1:8001";
+  const pythonBase = (process.env.PYTHON_API_URL || "https://stellar-merge-pulmovision-api.hf.space").replace(/\/+$/, "");
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);

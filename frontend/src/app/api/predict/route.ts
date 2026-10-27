@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing image data" }, { status: 400 });
     }
 
-    // Attempt python inference backend first (Tri-Ensemble on port 8001)
-    const pythonBase = (process.env.PYTHON_API_URL || "http://127.0.0.1:8001").replace(/\/+$/, "");
+    // Attempt python inference backend first (Hugging Face Space / local)
+    const pythonBase = (process.env.PYTHON_API_URL || "https://stellar-merge-pulmovision-api.hf.space").replace(/\/+$/, "");
     console.log(`[Predict Route] Connecting to Python backend: ${pythonBase}/api/predict`);
     try {
       const controller = new AbortController();

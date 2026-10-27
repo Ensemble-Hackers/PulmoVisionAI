@@ -134,31 +134,23 @@ def build_and_load_model(backbone_fn, h5_path, name):
 
 def download_models_from_hf_if_needed():
     """Automatically downloads trained model weights from Hugging Face Hub if missing."""
-    hf_repo = os.environ.get("HF_MODEL_REPO", "").strip()
+    hf_repo = os.environ.get("HF_MODEL_REPO", "stellar-merge/pulmovision-models").strip()
     if not hf_repo:
         return
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     import urllib.request
 
-    is_render = bool(os.environ.get("RENDER") or os.environ.get("SLIM_MODE", "false").lower() == "true")
-
-    if is_render:
-        print("[API] Render 512MB RAM environment: Loading DenseNet121+CLAHE (38 MB, 60% weight, 98.85% recall) to stay under memory ceiling.")
-        weights_to_check = [
-            ("densenet121_clahe_model.h5", DENSENET_PATH),
-        ]
-    else:
-        weights_to_check = [
-            ("trained_lung_cancer_model.h5", XCEPTION_PATH),
-            ("efficientnetv2s_model.h5", EFFICIENTNET_PATH),
-            ("densenet121_clahe_model.h5", DENSENET_PATH),
-        ]
+    weights_to_check = [
+        ("densenet121_clahe_model.h5", DENSENET_PATH),
+        ("efficientnetv2s_model.h5", EFFICIENTNET_PATH),
+        ("trained_lung_cancer_model.h5", XCEPTION_PATH),
+    ]
 
     for filename, target_path in weights_to_check:
         if not target_path.exists() or target_path.stat().st_size == 0:
             url = f"https://huggingface.co/{hf_repo}/resolve/main/{filename}"
-            print(f"[API] Downloading {filename} from Hugging Face ({url})...")
+            print(f"[API] Downloading {filename} from Hugging Face Hub ({url})...")
             try:
                 req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
                 with urllib.request.urlopen(req) as resp, open(target_path, "wb") as out_file:
@@ -174,7 +166,7 @@ def download_models_from_hf_if_needed():
 
 
 def init_models():
-    """Initializes and pre-warms deep learning models in memory with strict 512MB headroom."""
+    """Initializes and pre-warms full Tri-Ensemble deep learning models in memory."""
     global LOADED_MODELS
     download_models_from_hf_if_needed()
 
@@ -183,29 +175,27 @@ def init_models():
         return
 
     import gc
-    is_render = bool(os.environ.get("RENDER") or os.environ.get("SLIM_MODE", "false").lower() == "true")
+    print("[API] Initializing Tri-Ensemble backbones from disk...")
 
-    print("[API] Initializing models from disk...")
-    # DenseNet121+CLAHE (38 MB, highest accuracy 86.67%, highest sensitivity 98.85%)
+    # Backbone 1: DenseNet121+CLAHE (60% weight, 86.67% accuracy, 98.85% recall)
     m_dense = build_and_load_model(DenseNet121, DENSENET_PATH, "DenseNet121+CLAHE")
     if m_dense is not None:
         LOADED_MODELS["densenet"] = m_dense
     gc.collect()
 
-    if not is_render:
-        m_xc = build_and_load_model(Xception, XCEPTION_PATH, "Xception")
-        if m_xc is not None:
-            LOADED_MODELS["xception"] = m_xc
-        gc.collect()
+    # Backbone 2: EfficientNetV2-S (30% weight, multi-scale Fused-MBConv)
+    m_eff = build_and_load_model(EfficientNetV2S, EFFICIENTNET_PATH, "EfficientNetV2-S")
+    if m_eff is not None:
+        LOADED_MODELS["efficientnet"] = m_eff
+    gc.collect()
 
-        m_eff = build_and_load_model(EfficientNetV2S, EFFICIENTNET_PATH, "EfficientNetV2-S")
-        if m_eff is not None:
-            LOADED_MODELS["efficientnet"] = m_eff
-        gc.collect()
-    else:
-        print("[API] Render High-Efficiency Mode: DenseNet121+CLAHE loaded. Memory usage safely capped around 220 MB.")
+    # Backbone 3: Xception (10% weight, depthwise separable convolutions)
+    m_xc = build_and_load_model(Xception, XCEPTION_PATH, "Xception")
+    if m_xc is not None:
+        LOADED_MODELS["xception"] = m_xc
+    gc.collect()
 
-    # Lightweight single-image pre-warm to avoid spiking memory over 512MB
+    # Pre-warm all models so first user request has 0 compile latency
     if LOADED_MODELS:
         print(f"[API] Pre-warming {len(LOADED_MODELS)} loaded model(s)...")
         dummy = np.zeros((1, *IMAGE_SIZE, 3), dtype="float32")
@@ -215,7 +205,7 @@ def init_models():
             except Exception as e:
                 print(f"[API] Warm-up warning for {k}: {e}")
         gc.collect()
-        print("[API] Pre-warming completed. Models ready for instant clinical inference.")
+        print(f"[API] Tri-Ensemble ready ({len(LOADED_MODELS)}/3 backbones loaded). Serving instant clinical inferences.")
 
 
 def apply_clahe_pillow(image_rgb):
